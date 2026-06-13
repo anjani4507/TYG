@@ -1,5 +1,14 @@
-import React, { useState } from "react";
-import { View, Text, Pressable, Modal, ScrollView, FlatList } from "react-native";
+import React from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  Modal,
+  ScrollView,
+  Alert,
+  Platform,
+  ToastAndroid,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
@@ -9,12 +18,20 @@ interface Feature {
   name: string;
   icon: string;
   route?: string;
-  action?: () => void;
+  implemented: boolean;
 }
 
 interface FeatureCategory {
   title: string;
   features: Feature[];
+}
+
+function showComingSoon(name: string) {
+  if (Platform.OS === "android") {
+    ToastAndroid.show(`${name} — Coming Soon!`, ToastAndroid.SHORT);
+  } else {
+    Alert.alert("Coming Soon", `${name} is coming in a future update!`);
+  }
 }
 
 export function FeatureMenuModal({
@@ -31,55 +48,53 @@ export function FeatureMenuModal({
     {
       title: "Main features",
       features: [
-        { id: "stats", name: "Statistics", icon: "📊", route: "/stats" },
-        { id: "rankings", name: "Rankings", icon: "⭐", route: "/leaderboard" },
-        { id: "pomodoro", name: "Pomodoro", icon: "⏲️", route: "/session" },
-        { id: "allowed-apps", name: "Allowed Apps", icon: "🔒", route: "/allowed-apps" },
-        { id: "edit-log", name: "Edit log", icon: "✏️", route: "/edit-log" },
-        { id: "offline-mode", name: "Offline mode", icon: "📡", route: "/offline-mode" },
+        { id: "stats", name: "Statistics", icon: "📊", route: "/statistics", implemented: true },
+        { id: "rankings", name: "Rankings", icon: "⭐", route: "/leaderboard", implemented: true },
+        { id: "pomodoro", name: "Pomodoro", icon: "⏲️", route: "/session", implemented: true },
+        { id: "allowed-apps", name: "Allowed Apps", icon: "🔒", implemented: false },
+        { id: "edit-log", name: "Edit log", icon: "✏️", implemented: false },
+        { id: "offline-mode", name: "Offline mode", icon: "📡", implemented: false },
       ],
     },
     {
       title: "Extra features",
       features: [
-        { id: "books", name: "Books", icon: "📚", route: "/books" },
-        { id: "challenge", name: "Challenge", icon: "🏆", route: "/challenge" },
-        { id: "timetable", name: "Timetable", icon: "📅", route: "/timetable" },
-        { id: "timelapse", name: "Timelapse", icon: "🎬", route: "/timelapse" },
-        { id: "music", name: "Music", icon: "🎵", route: "/music" },
+        { id: "books", name: "Books", icon: "📚", route: "/books", implemented: true },
+        { id: "planner", name: "Planner", icon: "📋", route: "/planner", implemented: true },
+        { id: "challenge", name: "Challenge", icon: "🏆", implemented: false },
+        { id: "timetable", name: "Timetable", icon: "📅", implemented: false },
+        { id: "timelapse", name: "Timelapse", icon: "🎬", implemented: false },
+        { id: "music", name: "Music", icon: "🎵", implemented: false },
       ],
     },
     {
-      title: "Decorate",
+      title: "Tools",
       features: [
-        { id: "theme", name: "Theme", icon: "🎨", route: "/theme" },
-        { id: "studicon", name: "Studicon", icon: "🎭", route: "/studicon" },
-        { id: "decorate-planner", name: "Decorate planner", icon: "✨", route: "/decorate-planner" },
-        { id: "store", name: "Store", icon: "🛒", route: "/store" },
+        { id: "canvas", name: "Canvas", icon: "🎨", route: "/canvas", implemented: true },
+        { id: "calendar", name: "Calendar", icon: "📅", route: "/calendar", implemented: true },
+        { id: "todo", name: "To-Do", icon: "✅", route: "/todo", implemented: true },
+        { id: "groups", name: "Groups", icon: "👥", route: "/groups", implemented: true },
       ],
     },
     {
-      title: "More",
+      title: "Settings",
       features: [
-        { id: "select-home", name: "Select home screen", icon: "🏠", route: "/" },
-        { id: "break-settings", name: "Break settings", icon: "⏸️", route: "/break-settings" },
-        { id: "app-lock", name: "App lock", icon: "🔐", route: "/app-lock" },
-        { id: "help", name: "Help", icon: "❓", route: "/help" },
-        { id: "settings", name: "Settings", icon: "⚙️", route: "/settings" },
-        { id: "canvas", name: "Canvas", icon: "🎨", route: "/canvas" },
-        { id: "ai-planner", name: "AI Planner", icon: "🤖", route: "/ai-planner" },
+        { id: "settings", name: "Settings", icon: "⚙️", route: "/settings", implemented: true },
+        { id: "theme", name: "Theme", icon: "🎭", implemented: false },
+        { id: "break-settings", name: "Break settings", icon: "⏸️", implemented: false },
+        { id: "app-lock", name: "App lock", icon: "🔐", implemented: false },
+        { id: "help", name: "Help", icon: "❓", implemented: false },
       ],
     },
   ];
 
   const handleFeaturePress = (feature: Feature) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (feature.route) {
+    if (feature.implemented && feature.route) {
       router.push(feature.route as any);
       onClose();
-    } else if (feature.action) {
-      feature.action();
-      onClose();
+    } else {
+      showComingSoon(feature.name);
     }
   };
 
@@ -88,30 +103,48 @@ export function FeatureMenuModal({
       onPress={() => handleFeaturePress(feature)}
       style={({ pressed }) => [
         {
-          flex: 1,
-          paddingVertical: 12,
-          paddingHorizontal: 12,
-          marginHorizontal: 6,
+          width: "30%",
+          paddingVertical: 14,
+          paddingHorizontal: 8,
+          marginHorizontal: "1.5%",
           marginBottom: 12,
-          borderRadius: 12,
+          borderRadius: 14,
           backgroundColor: colors.surface,
           alignItems: "center",
           justifyContent: "center",
-          opacity: pressed ? 0.7 : 1,
+          opacity: pressed ? 0.7 : feature.implemented ? 1 : 0.5,
         },
       ]}
     >
-      <Text style={{ fontSize: 24, marginBottom: 4 }}>{feature.icon}</Text>
+      <Text style={{ fontSize: 24, marginBottom: 6 }}>{feature.icon}</Text>
       <Text
         style={{
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: "600",
           color: colors.foreground,
           textAlign: "center",
         }}
+        numberOfLines={2}
       >
         {feature.name}
       </Text>
+      {!feature.implemented && (
+        <View
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 6,
+            backgroundColor: colors.primary + "30",
+            borderRadius: 4,
+            paddingHorizontal: 4,
+            paddingVertical: 1,
+          }}
+        >
+          <Text style={{ fontSize: 7, color: colors.primary, fontWeight: "700" }}>
+            SOON
+          </Text>
+        </View>
+      )}
     </Pressable>
   );
 
@@ -146,7 +179,7 @@ export function FeatureMenuModal({
                 {/* Category Title */}
                 <Text
                   style={{
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: "600",
                     color: colors.muted,
                     marginBottom: 12,
@@ -162,7 +195,6 @@ export function FeatureMenuModal({
                   style={{
                     flexDirection: "row",
                     flexWrap: "wrap",
-                    marginHorizontal: -6,
                   }}
                 >
                   {category.features.map((feature) => (

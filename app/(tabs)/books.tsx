@@ -14,6 +14,8 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  Alert,
+  Linking,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -410,7 +412,7 @@ export default function BooksScreen() {
             },
           ]}
         >
-          <Text style={{ fontSize: 28 }}>+</Text>
+          <Text style={{ fontSize: 28, color: "#fff", fontWeight: "300", marginTop: -2 }}>+</Text>
         </Pressable>
       </View>
 
@@ -597,54 +599,33 @@ export default function BooksScreen() {
                   {currentBook.title}
                 </Text>
 
-                <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 16 }}>
-                  {currentBook.author}
+                <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 8 }}>
+                  {currentBook.author || "Unknown Author"}
                 </Text>
 
-                {/* Progress */}
-                <View
-                  style={{
-                    backgroundColor: colors.surface,
-                    borderRadius: 12,
-                    padding: 12,
-                    marginBottom: 16,
-                  }}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, marginBottom: 8 }}>
-                    Reading Progress
+                {currentBook.description ? (
+                  <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16, lineHeight: 20 }}>
+                    {currentBook.description}
                   </Text>
-                  <View
-                    style={{
-                      height: 8,
-                      backgroundColor: colors.border,
-                      borderRadius: 4,
-                      overflow: "hidden",
-                      marginBottom: 8,
-                    }}
-                  >
-                    <View
-                      style={{
-                        height: "100%",
-                        width: `${currentBook.readingProgress}%`,
-                        backgroundColor: colors.primary,
-                      }}
-                    />
-                  </View>
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>
-                    {currentBook.currentPage}/{currentBook.totalPages} pages ({currentBook.readingProgress}%)
-                  </Text>
-                </View>
+                ) : null}
 
-                {/* Action Buttons */}
-                <View style={{ flexDirection: "row", gap: 12 }}>
-                  {!currentBook.isPurchased && (
+                {/* Unpurchased Book — Show locked state */}
+                {!currentBook.isPurchased ? (
+                  <View style={{ alignItems: "center", paddingVertical: 24 }}>
+                    <Text style={{ fontSize: 48, marginBottom: 12 }}>🔒</Text>
+                    <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>
+                      This book is locked
+                    </Text>
+                    <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center", marginBottom: 20 }}>
+                      Purchase this book to start reading
+                    </Text>
                     <Pressable
                       onPress={() => handlePurchaseBook(currentBook.id)}
                       style={({ pressed }) => [
                         {
-                          flex: 1,
-                          paddingVertical: 12,
-                          borderRadius: 8,
+                          width: "100%",
+                          paddingVertical: 14,
+                          borderRadius: 12,
                           backgroundColor: colors.primary,
                           justifyContent: "center",
                           alignItems: "center",
@@ -652,31 +633,157 @@ export default function BooksScreen() {
                         },
                       ]}
                     >
-                      <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff" }}>
-                        Purchase
+                      <Text style={{ fontSize: 16, fontWeight: "600", color: "#fff" }}>
+                        Unlock Book
                       </Text>
                     </Pressable>
-                  )}
+                  </View>
+                ) : (
+                  <>
+                    {/* Progress Section */}
+                    <View
+                      style={{
+                        backgroundColor: colors.surface,
+                        borderRadius: 12,
+                        padding: 12,
+                        marginBottom: 16,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, marginBottom: 8 }}>
+                        Reading Progress
+                      </Text>
+                      <View
+                        style={{
+                          height: 8,
+                          backgroundColor: colors.border,
+                          borderRadius: 4,
+                          overflow: "hidden",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <View
+                          style={{
+                            height: "100%",
+                            width: `${currentBook.readingProgress}%`,
+                            backgroundColor: colors.primary,
+                          }}
+                        />
+                      </View>
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>
+                        {currentBook.currentPage}/{currentBook.totalPages} pages ({currentBook.readingProgress}%)
+                      </Text>
 
-                  <Pressable
-                    onPress={() => handleDeleteBook(currentBook.id)}
-                    style={({ pressed }) => [
-                      {
-                        flex: 1,
-                        paddingVertical: 12,
-                        borderRadius: 8,
-                        backgroundColor: colors.error,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        opacity: pressed ? 0.7 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff" }}>
-                      Delete
-                    </Text>
-                  </Pressable>
-                </View>
+                      {/* Page Update Controls */}
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 }}>
+                        <Pressable
+                          onPress={() => {
+                            const newPage = Math.max(0, currentBook.currentPage - 10);
+                            updateReadingProgress(currentBook.id, newPage);
+                          }}
+                          style={({ pressed }) => [{
+                            paddingHorizontal: 12, paddingVertical: 8,
+                            borderRadius: 8, backgroundColor: colors.border,
+                            opacity: pressed ? 0.7 : 1,
+                          }]}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>-10</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => {
+                            const newPage = Math.max(0, currentBook.currentPage - 1);
+                            updateReadingProgress(currentBook.id, newPage);
+                          }}
+                          style={({ pressed }) => [{
+                            paddingHorizontal: 12, paddingVertical: 8,
+                            borderRadius: 8, backgroundColor: colors.border,
+                            opacity: pressed ? 0.7 : 1,
+                          }]}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>-1</Text>
+                        </Pressable>
+                        <View style={{ flex: 1, alignItems: "center" }}>
+                          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.primary }}>
+                            Page {currentBook.currentPage}
+                          </Text>
+                        </View>
+                        <Pressable
+                          onPress={() => {
+                            const newPage = Math.min(currentBook.totalPages, currentBook.currentPage + 1);
+                            updateReadingProgress(currentBook.id, newPage);
+                          }}
+                          style={({ pressed }) => [{
+                            paddingHorizontal: 12, paddingVertical: 8,
+                            borderRadius: 8, backgroundColor: colors.border,
+                            opacity: pressed ? 0.7 : 1,
+                          }]}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>+1</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => {
+                            const newPage = Math.min(currentBook.totalPages, currentBook.currentPage + 10);
+                            updateReadingProgress(currentBook.id, newPage);
+                          }}
+                          style={({ pressed }) => [{
+                            paddingHorizontal: 12, paddingVertical: 8,
+                            borderRadius: 8, backgroundColor: colors.border,
+                            opacity: pressed ? 0.7 : 1,
+                          }]}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>+10</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    {/* Continue Reading Button */}
+                    {currentBook.isPDF && currentBook.file && (
+                      <Pressable
+                        onPress={() => {
+                          if (currentBook.file?.uri) {
+                            Linking.openURL(currentBook.file.uri).catch(() => {
+                              Alert.alert("Error", "Could not open PDF file");
+                            });
+                          }
+                        }}
+                        style={({ pressed }) => [{
+                          paddingVertical: 14,
+                          borderRadius: 12,
+                          backgroundColor: colors.primary,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          opacity: pressed ? 0.7 : 1,
+                          marginBottom: 12,
+                        }]}
+                      >
+                        <Text style={{ fontSize: 16, fontWeight: "600", color: "#fff" }}>
+                          {currentBook.currentPage > 0 ? "Continue Reading" : "Start Reading"}
+                        </Text>
+                      </Pressable>
+                    )}
+
+                    {/* Action Buttons */}
+                    <View style={{ flexDirection: "row", gap: 12 }}>
+                      <Pressable
+                        onPress={() => handleDeleteBook(currentBook.id)}
+                        style={({ pressed }) => [
+                          {
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: 8,
+                            backgroundColor: colors.error,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            opacity: pressed ? 0.7 : 1,
+                          },
+                        ]}
+                      >
+                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff" }}>
+                          Delete
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </>
+                )}
 
                 <Pressable
                   onPress={() => setShowDetailModal(false)}

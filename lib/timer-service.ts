@@ -164,8 +164,10 @@ class TimerService {
     const session = this.sessions.find((s) => s.id === this.timerState.activeSessionId);
     if (!session || !session.paused) return;
 
-    const pausedDuration = (session.pausedAt || Date.now()) - session.startTime;
-    session.startTime = Date.now() - pausedDuration;
+    // Calculate how long this pause lasted
+    const pauseGap = Date.now() - (session.pausedAt || Date.now());
+    // Shift startTime forward by the pause gap so elapsed time calculation stays correct
+    session.startTime += pauseGap;
     session.paused = false;
     session.pausedAt = undefined;
 
@@ -315,6 +317,13 @@ class TimerService {
     return `${hours.toString().padStart(2, "0")}:${minutes
       .toString()
       .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  }
+
+  /**
+   * Instance method wrapper for formatTime
+   */
+  formatTime(milliseconds: number): string {
+    return TimerService.formatTime(milliseconds);
   }
 
   /**

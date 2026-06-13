@@ -1,7 +1,8 @@
-import { ScrollView, Text, View, Pressable, FlatList } from 'react-native';
+import { ScrollView, Text, View, Pressable } from 'react-native';
 import { ScreenContainer } from '@/components/screen-container';
 import { useStatistics } from '@/hooks/use-statistics';
 import { useColors } from '@/hooks/use-colors';
+import { StudyHeatmap } from '@/components/study-heatmap';
 import { cn } from '@/lib/utils';
 import * as Haptics from 'expo-haptics';
 
@@ -22,23 +23,42 @@ export default function StatisticsScreen() {
   const totalCount = achievements.length;
   const progressPercent = getAchievementProgress();
 
+  // Find best study day
+  const bestDay = analytics.dailyStats.length > 0
+    ? analytics.dailyStats.reduce((best, day) =>
+        day.totalMinutes > best.totalMinutes ? day : best,
+        analytics.dailyStats[0]
+      )
+    : null;
+
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-        <View className="gap-6 pb-8">
+        <View className="gap-6 pb-8" style={{ paddingHorizontal: 16, paddingTop: 16 }}>
           {/* Header */}
           <View className="gap-2">
             <Text className="text-3xl font-bold text-foreground">Statistics</Text>
             <Text className="text-sm text-muted">Your study journey at a glance</Text>
           </View>
 
-          {/* Key Metrics */}
+          {/* Study Heatmap */}
           <View className="gap-3">
-            <View className="grid grid-cols-2 gap-3">
+            <Text className="text-lg font-semibold text-foreground">Study Heatmap</Text>
+            <View
+              className="rounded-2xl p-4"
+              style={{ backgroundColor: colors.surface }}
+            >
+              <StudyHeatmap data={analytics.heatmap} />
+            </View>
+          </View>
+
+          {/* Key Metrics — Fixed flexbox layout (no grid) */}
+          <View className="gap-3">
+            <View style={{ flexDirection: 'row', gap: 12 }}>
               {/* Total Minutes */}
               <View
                 className="rounded-2xl p-4"
-                style={{ backgroundColor: colors.surface }}
+                style={{ backgroundColor: colors.surface, flex: 1 }}
               >
                 <Text className="text-xs text-muted mb-1">Total Studied</Text>
                 <Text className="text-2xl font-bold text-foreground">
@@ -52,7 +72,7 @@ export default function StatisticsScreen() {
               {/* Current Streak */}
               <View
                 className="rounded-2xl p-4"
-                style={{ backgroundColor: colors.surface }}
+                style={{ backgroundColor: colors.surface, flex: 1 }}
               >
                 <Text className="text-xs text-muted mb-1">Current Streak</Text>
                 <Text className="text-2xl font-bold text-foreground">
@@ -60,11 +80,13 @@ export default function StatisticsScreen() {
                 </Text>
                 <Text className="text-xs text-muted mt-1">days 🔥</Text>
               </View>
+            </View>
 
+            <View style={{ flexDirection: 'row', gap: 12 }}>
               {/* Total Sessions */}
               <View
                 className="rounded-2xl p-4"
-                style={{ backgroundColor: colors.surface }}
+                style={{ backgroundColor: colors.surface, flex: 1 }}
               >
                 <Text className="text-xs text-muted mb-1">Sessions</Text>
                 <Text className="text-2xl font-bold text-foreground">
@@ -78,7 +100,7 @@ export default function StatisticsScreen() {
               {/* Longest Streak */}
               <View
                 className="rounded-2xl p-4"
-                style={{ backgroundColor: colors.surface }}
+                style={{ backgroundColor: colors.surface, flex: 1 }}
               >
                 <Text className="text-xs text-muted mb-1">Best Streak</Text>
                 <Text className="text-2xl font-bold text-foreground">
@@ -89,21 +111,80 @@ export default function StatisticsScreen() {
             </View>
           </View>
 
-          {/* Most Studied Subject */}
-          <View
-            className="rounded-2xl p-4"
-            style={{ backgroundColor: colors.surface }}
-          >
-            <Text className="text-xs text-muted mb-2">Most Studied Subject</Text>
-            <Text className="text-xl font-bold text-foreground">
-              {analytics.mostStudiedSubject}
-            </Text>
-            <Text className="text-xs text-muted mt-2">
-              {analytics.studyFrequency} days studied this month
-            </Text>
+          {/* Most Studied Subject & Best Day */}
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View
+              className="rounded-2xl p-4"
+              style={{ backgroundColor: colors.surface, flex: 1 }}
+            >
+              <Text className="text-xs text-muted mb-2">Most Studied</Text>
+              <Text className="text-lg font-bold text-foreground" numberOfLines={1}>
+                {analytics.mostStudiedSubject}
+              </Text>
+              <Text className="text-xs text-muted mt-2">
+                {analytics.studyFrequency} days this month
+              </Text>
+            </View>
+
+            {bestDay && (
+              <View
+                className="rounded-2xl p-4"
+                style={{ backgroundColor: colors.surface, flex: 1 }}
+              >
+                <Text className="text-xs text-muted mb-2">Best Day</Text>
+                <Text className="text-lg font-bold text-foreground">
+                  {Math.floor(bestDay.totalMinutes / 60)}h {bestDay.totalMinutes % 60}m
+                </Text>
+                <Text className="text-xs text-muted mt-2">
+                  {bestDay.date}
+                </Text>
+              </View>
+            )}
           </View>
 
-          {/* Study Frequency Chart */}
+          {/* Daily Breakdown (last 7 days) */}
+          <View className="gap-3">
+            <Text className="text-lg font-semibold text-foreground">Daily Breakdown</Text>
+            <View
+              className="rounded-2xl p-4"
+              style={{ backgroundColor: colors.surface }}
+            >
+              {analytics.dailyStats.slice(0, 7).map(day => {
+                const maxMinutes = Math.max(
+                  ...analytics.dailyStats.slice(0, 7).map(d => d.totalMinutes),
+                  1
+                );
+                const barWidth = Math.max((day.totalMinutes / maxMinutes) * 100, 2);
+
+                return (
+                  <View key={day.date} style={{ marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text className="text-xs text-muted">{day.date}</Text>
+                      <Text className="text-xs font-semibold text-foreground">
+                        {Math.floor(day.totalMinutes / 60)}h {day.totalMinutes % 60}m
+                      </Text>
+                    </View>
+                    <View className="h-2 rounded-full" style={{ backgroundColor: colors.border }}>
+                      <View
+                        className="h-2 rounded-full"
+                        style={{
+                          width: `${barWidth}%`,
+                          backgroundColor: colors.primary,
+                        }}
+                      />
+                    </View>
+                  </View>
+                );
+              })}
+              {analytics.dailyStats.length === 0 && (
+                <Text className="text-sm text-muted text-center py-4">
+                  No study data yet. Start a session to see daily stats!
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* Study Frequency */}
           <View className="gap-3">
             <Text className="text-lg font-semibold text-foreground">Study Frequency</Text>
             <View
@@ -112,7 +193,7 @@ export default function StatisticsScreen() {
             >
               <View className="flex-row items-center gap-3 mb-2">
                 <View className="flex-1">
-                  <View className="h-2 rounded-full bg-muted/30">
+                  <View className="h-2 rounded-full" style={{ backgroundColor: colors.border }}>
                     <View
                       className="h-2 rounded-full"
                       style={{
@@ -146,7 +227,7 @@ export default function StatisticsScreen() {
               className="rounded-2xl p-4"
               style={{ backgroundColor: colors.surface }}
             >
-              <View className="h-2 rounded-full bg-muted/30 mb-2">
+              <View className="h-2 rounded-full mb-2" style={{ backgroundColor: colors.border }}>
                 <View
                   className="h-2 rounded-full"
                   style={{
@@ -160,7 +241,7 @@ export default function StatisticsScreen() {
 
             {/* Achievement Grid */}
             <View className="gap-3">
-              {achievements.map((achievement, index) => (
+              {achievements.map((achievement) => (
                 <Pressable
                   key={achievement.id}
                   onPress={() => {
@@ -192,7 +273,7 @@ export default function StatisticsScreen() {
 
                       {!achievement.unlockedAt && (
                         <View className="mt-2">
-                          <View className="h-1 rounded-full bg-muted/30">
+                          <View className="h-1 rounded-full" style={{ backgroundColor: colors.border }}>
                             <View
                               className="h-1 rounded-full"
                               style={{
