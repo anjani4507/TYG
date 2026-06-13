@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Profiles - Persistent data
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  sessions  Session[]
+  groups    Group[]   @relation("GroupCreator")
+  groupMemberships GroupMember[]
+
+  @@index([email])
+  @@index([createdAt])
+}
+
+// Focus Sessions - Persistent data with optimized indexes
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  groupId      String?
+  subject      String?
+  description  String?
+  duration     Int      // in seconds
+  intensityScore Int    @default(5) // 1-10 scale
+  status       String   @default("active") // active, paused, completed
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Canvas snapshot reference (URL only, blob stored in Supabase Storage)
+  canvasSnapshotUrl String?
+
+  // Relations
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  // Indexes for fast filtering
+  @@index([userId])
+  @@index([groupId])
+  @@index([createdAt])
+  @@index([startedAt])
+  @@index([status])
+  // Partial index for completed sessions (for dashboard query optimization)
+  @@index([userId, createdAt], where: "status = 'completed'")
+  @@index([groupId, createdAt], where: "status = 'completed'")
+}
+
+// Groups - Persistent data
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  creatorId   String
+  memberCount Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  creator      User          @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members      GroupMember[]
+  sessions     Session[]
+
+  @@index([creatorId])
+  @@index([createdAt])
+}
+
+// Group Members - Persistent data
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  joinedAt  DateTime @default(now())
+
+  // Relations
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+// Session Analytics - Persistent data (aggregated stats)
+model SessionAnalytics {
+  id                String   @id @default(cuid())
+  userId            String
+  totalSessions     Int      @default(0)
+  totalDuration     Int      @default(0) // in seconds
+  averageIntensity  Float    @default(0)
+  currentStreak     Int      @default(0)
+  longestStreak     Int      @default(0)
+  lastSessionDate   DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId])
+  @@index([userId])
+}
+
+// Audit Log - Persistent data for compliance
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  resource  String
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
+}
